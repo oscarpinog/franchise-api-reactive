@@ -1,0 +1,36 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: franchise-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: franchise_db
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+    container_name: franchise-app
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - SPRING_R2DBC_URL=r2dbc:mysql://db:3306/franchise_db
+      - SPRING_R2DBC_USERNAME=root
+      - SPRING_R2DBC_PASSWORD=root
+      - SPRING_SQL_INIT_MODE=always
+
+volumes:
+  mysql_data:

@@ -1,0 +1,48 @@
+# --- Java & Maven ---
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# --- STS / Eclipse ---
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+# --- IntelliJ IDEA ---
+.idea
+*.iws
+*.iml
+*.ipr
+out/
+
+# --- VS Code ---
+.vscode/
+.history/
+
+# --- NetBeans ---
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- Logs & Temp ---
+logs/
+*.tmp
+*.temp
