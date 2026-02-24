@@ -8,6 +8,9 @@ Servicio reactivo desarrollado con Spring Boot 3.2.3 y Java 21 para la gestion i
 * **Desarrollador:** Mg.Oscar Rodriguez
 * **Contacto:** oscarpino711@gmail.com
 
+### Repositorio del proyecto
+`https://github.com/oscarpinog/franchise-api-reactive`
+
 ## 🚀 Despliegue y Ejecución
 
 ### Ejecución Local con Docker (Recomendado)
@@ -15,11 +18,11 @@ El proyecto está configurado para conectarse automáticamente a la base de dato
 1. Asegúrate de estar en la raíz del proyecto.
 2. Ejecuta:
    docker-compose up --build --force-recreate
-3. Accede a la documentación interactiva: http://localhost:8080/webjars/swagger-ui/index.html
+3. Accede a la documentación interactiva: `http://localhost:8080/webjars/swagger-ui/index.html`
 
 ### Acceso en la Nube (AWS)
 La solución está desplegada y operativa en la nube:
-* Swagger UI: https://iz5f632zbj.us-east-2.awsapprunner.com/webjars/swagger-ui/index.html
+* Swagger UI: `https://iz5f632zbj.us-east-2.awsapprunner.com/webjars/swagger-ui/index.html`
 
 ---
 
