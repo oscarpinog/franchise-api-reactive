@@ -3,11 +3,14 @@ package com.franchise.domain.service;
 import com.franchise.domain.model.Branch;
 import com.franchise.domain.model.Product;
 import com.franchise.domain.ports.in.BranchServicePort;
-import com.franchise.domain.ports.out.BranchRepositoryPort;
-import com.franchise.domain.ports.out.ProductRepositoryPort;
+import com.franchise.domain.ports.out.BranchOutputPort;
+import com.franchise.domain.ports.out.ProductOutputPort;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -15,10 +18,10 @@ public class BranchServiceImpl implements BranchServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(BranchServiceImpl.class);
 
-    private final BranchRepositoryPort branchRepository;
-    private final ProductRepositoryPort productRepository;
+    private final BranchOutputPort branchRepository;
+    private final ProductOutputPort productRepository;
 
-    public BranchServiceImpl(BranchRepositoryPort branchRepository, ProductRepositoryPort productRepository) {
+    public BranchServiceImpl(BranchOutputPort branchRepository, ProductOutputPort productRepository) {
         this.branchRepository = branchRepository;
         this.productRepository = productRepository;
     }
@@ -38,9 +41,9 @@ public class BranchServiceImpl implements BranchServicePort {
     public Mono<Branch> updateName(Long id, String name) {
         return branchRepository.findById(id)
                 .doFirst(() -> log.info("Buscando sucursal ID: {} para actualizar nombre a '{}'", id, name))
-                .flatMap(b -> {
-                    b.setName(name);
-                    return branchRepository.save(b);
+                .flatMap(branch -> {
+                    branch.rename(name);
+                    return branchRepository.save(branch);
                 })
                 // Si findById no devuelve nada, lanzamos error para que el GlobalExceptionHandler lo capture
                 .switchIfEmpty(Mono.error(new IllegalArgumentException("No se encontró la sucursal con ID: " + id)))
@@ -60,4 +63,15 @@ public class BranchServiceImpl implements BranchServicePort {
                 .doOnSuccess(p -> log.info("Producto '{}' vinculado correctamente a la sucursal {}", p.getName(), branchId))
                 .doOnError(e -> log.error("Error al intentar agregar producto: {}", e.getMessage()));
     }
+   
+//    @Override
+//    public Flux<Branch> findByFranchiseId(Long franchiseId) {
+//        return branchRepository.findByFranchiseId(franchiseId)
+//                .doFirst(() -> log.info("Buscando sucursales para franquicia ID: {}", franchiseId))
+//                .switchIfEmpty(Flux.error(
+//                        new IllegalArgumentException("No existen sucursales para la franquicia con ID: " + franchiseId)
+//                ))
+//                .doOnComplete(() -> log.info("Consulta de sucursales finalizada para franquicia ID: {}", franchiseId))
+//                .doOnError(e -> log.error("Error consultando sucursales: {}", e.getMessage()));
+//    }
 }

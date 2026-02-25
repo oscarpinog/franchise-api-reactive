@@ -4,9 +4,9 @@ import com.franchise.domain.model.Branch;
 import com.franchise.domain.model.Franchise;
 import com.franchise.domain.model.Product;
 import com.franchise.domain.ports.in.FranchiseServicePort;
-import com.franchise.domain.ports.out.BranchRepositoryPort;
-import com.franchise.domain.ports.out.FranchiseRepositoryPort;
-import com.franchise.domain.ports.out.ProductRepositoryPort;
+import com.franchise.domain.ports.out.BranchOutputPort;
+import com.franchise.domain.ports.out.FranchiseOutputPort;
+import com.franchise.domain.ports.out.ProductOutputPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -18,13 +18,13 @@ public class FranchiseServiceImpl implements FranchiseServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(FranchiseServiceImpl.class);
 
-    private final FranchiseRepositoryPort franchiseRepository;
-    private final BranchRepositoryPort branchRepository;
-    private final ProductRepositoryPort productRepository;
+    private final FranchiseOutputPort franchiseRepository;
+    private final BranchOutputPort branchRepository;
+    private final ProductOutputPort productRepository;
 
-    public FranchiseServiceImpl(FranchiseRepositoryPort franchiseRepository, 
-                                BranchRepositoryPort branchRepository,
-                                ProductRepositoryPort productRepository) {
+    public FranchiseServiceImpl(FranchiseOutputPort franchiseRepository, 
+                                BranchOutputPort branchRepository,
+                                ProductOutputPort productRepository) {
         this.franchiseRepository = franchiseRepository;
         this.branchRepository = branchRepository;
         this.productRepository = productRepository;

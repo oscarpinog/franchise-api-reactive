@@ -2,7 +2,7 @@ package com.franchise.domain.service;
 
 import com.franchise.domain.model.Product;
 import com.franchise.domain.ports.in.ProductServicePort;
-import com.franchise.domain.ports.out.ProductRepositoryPort;
+import com.franchise.domain.ports.out.ProductOutputPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -13,9 +13,9 @@ public class ProductServiceImpl implements ProductServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(ProductServiceImpl.class);
 
-    private final ProductRepositoryPort productRepository;
+    private final ProductOutputPort productRepository;
 
-    public ProductServiceImpl(ProductRepositoryPort productRepository) {
+    public ProductServiceImpl(ProductOutputPort productRepository) {
         this.productRepository = productRepository;
     }
 

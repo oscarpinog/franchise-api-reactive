@@ -1,7 +1,7 @@
 package com.franchise.infrastructure.adapters.r2dbc;
 
 import com.franchise.domain.model.Product;
-import com.franchise.domain.ports.out.ProductRepositoryPort;
+import com.franchise.domain.ports.out.ProductOutputPort;
 import com.franchise.infrastructure.adapters.r2dbc.mapper.ProductEntityMapper;
 import com.franchise.infrastructure.adapters.r2dbc.repository.ProductRepository;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 
 @Component
-public class ProductAdapter implements ProductRepositoryPort {
+public class ProductAdapter implements ProductOutputPort {
 
     private static final Logger log = LoggerFactory.getLogger(ProductAdapter.class);
     private final ProductRepository repository;

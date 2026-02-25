@@ -2,6 +2,8 @@ package com.franchise.domain.ports.in;
 
 import com.franchise.domain.model.Branch;
 import com.franchise.domain.model.Product;
+
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface BranchServicePort {
@@ -13,4 +15,6 @@ public interface BranchServicePort {
     
     // Para agregar productos a esta sucursal (lo que pide tu controller)
     Mono<Product> addProduct(Long branchId, Product product);
+    
+    //Flux<Branch> findByFranchiseId(Long franchiseId);
 }

@@ -1,7 +1,7 @@
 package com.franchise.infrastructure.adapters.r2dbc;
 
 import com.franchise.domain.model.Branch;
-import com.franchise.domain.ports.out.BranchRepositoryPort;
+import com.franchise.domain.ports.out.BranchOutputPort;
 import com.franchise.infrastructure.adapters.r2dbc.mapper.BranchEntityMapper;
 import com.franchise.infrastructure.adapters.r2dbc.repository.BranchRepository;
 import org.springframework.stereotype.Component;
@@ -11,7 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Component
-public class BranchAdapter implements BranchRepositoryPort {
+public class BranchAdapter implements BranchOutputPort {
 
     private static final Logger log = LoggerFactory.getLogger(BranchAdapter.class);
     private final BranchRepository repository;
@@ -43,16 +43,6 @@ public class BranchAdapter implements BranchRepositoryPort {
                 .map(BranchEntityMapper::toDomain)
                 .doFirst(() -> log.debug("Consultando sucursales para franquicia ID: {}", franchiseId))
                 .doOnComplete(() -> log.debug("Consulta de sucursales finalizada para franquicia: {}", franchiseId));
-    }
-    
-    public Mono<Branch> updateBranchName(Long id, String name) {
-        return repository.findById(id) 
-            .doFirst(() -> log.debug("Iniciando actualización de nombre en DB para Branch ID: {}", id))
-            .flatMap(entity -> {
-                entity.setName(name);  
-                return repository.save(entity); 
-            })
-            .map(BranchEntityMapper::toDomain)
-            .doOnSuccess(b -> log.debug("Nombre actualizado exitosamente en DB para ID: {}", id));
-    }
+    }   
+
 }

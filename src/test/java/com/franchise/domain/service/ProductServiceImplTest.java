@@ -1,7 +1,7 @@
 package com.franchise.domain.service;
 
 import com.franchise.domain.model.Product;
-import com.franchise.domain.ports.out.ProductRepositoryPort;
+import com.franchise.domain.ports.out.ProductOutputPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +19,7 @@ import static org.mockito.Mockito.*;
 class ProductServiceImplTest {
 
     @Mock
-    private ProductRepositoryPort productRepository;
+    private ProductOutputPort productRepository;
 
     @InjectMocks
     private ProductServiceImpl productService;
