@@ -5,19 +5,18 @@ import com.franchise.domain.model.Product;
 import com.franchise.domain.ports.in.BranchServicePort;
 import com.franchise.domain.ports.out.BranchOutputPort;
 import com.franchise.domain.ports.out.ProductOutputPort;
+import com.franchise.domain.util.DomainConstants;
+import com.franchise.domain.util.ValidationHelper;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Service
 public class BranchServiceImpl implements BranchServicePort {
 
     private static final Logger log = LoggerFactory.getLogger(BranchServiceImpl.class);
-
     private final BranchOutputPort branchRepository;
     private final ProductOutputPort productRepository;
 
@@ -28,50 +27,46 @@ public class BranchServiceImpl implements BranchServicePort {
 
     @Override
     public Mono<Branch> addBranch(Long franchiseId, Branch branch) {
+        ValidationHelper.requireNotNull(franchiseId, "franchiseId");
+        ValidationHelper.requireNotNull(branch, "branch");
+
         return Mono.just(branch)
-                .doFirst(() -> log.info("Agregando nueva sucursal '{}' a la franquicia ID: {}", branch.getName(), franchiseId))
+                .doFirst(() -> log.info(DomainConstants.LOG_BRANCH_ADD_START, branch.getName(), franchiseId))
                 .flatMap(b -> {
                     b.setFranchiseId(franchiseId);
                     return branchRepository.save(b);
                 })
-                .doOnSuccess(savedBranch -> log.info("Sucursal guardada exitosamente con ID: {}", savedBranch.getId()));
+                .doOnSuccess(saved -> log.info(DomainConstants.LOG_BRANCH_ADD_SUCCESS, saved.getId()));
     }
 
     @Override
     public Mono<Branch> updateName(Long id, String name) {
+        ValidationHelper.requireNotNull(id, "id");
+        ValidationHelper.requireNotNull(name, "name");
+
         return branchRepository.findById(id)
-                .doFirst(() -> log.info("Buscando sucursal ID: {} para actualizar nombre a '{}'", id, name))
+                .doFirst(() -> log.info(DomainConstants.LOG_BRANCH_UPDATE_START, id, name))
                 .flatMap(branch -> {
                     branch.rename(name);
                     return branchRepository.save(branch);
                 })
-                // Si findById no devuelve nada, lanzamos error para que el GlobalExceptionHandler lo capture
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("No se encontró la sucursal con ID: " + id)))
-                .doOnSuccess(updated -> log.info("Nombre de sucursal actualizado con éxito"));
+                .switchIfEmpty(ValidationHelper.onErrorNotFound(id, DomainConstants.ERROR_BRANCH_NOT_FOUND))
+                .doOnSuccess(updated -> log.info(DomainConstants.LOG_BRANCH_UPDATE_SUCCESS));
     }
 
     @Override
     public Mono<Product> addProduct(Long branchId, Product product) {
+        ValidationHelper.requireNotNull(branchId, "branchId");
+        ValidationHelper.requireNotNull(product, "product");
+
         return branchRepository.findById(branchId)
-                .doFirst(() -> log.info("Validando existencia de sucursal ID: {} para añadir producto '{}'", branchId, product.getName()))
-                // Verificamos primero si la sucursal existe antes de guardar el producto
+                .doFirst(() -> log.info(DomainConstants.LOG_PRODUCT_ADD_VALIDATING, branchId, product.getName()))
                 .flatMap(branch -> {
                     product.setBranchId(branchId);
                     return productRepository.save(product);
                 })
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("No se puede agregar el producto. La sucursal con ID " + branchId + " no existe.")))
-                .doOnSuccess(p -> log.info("Producto '{}' vinculado correctamente a la sucursal {}", p.getName(), branchId))
-                .doOnError(e -> log.error("Error al intentar agregar producto: {}", e.getMessage()));
+                .switchIfEmpty(ValidationHelper.onErrorNotFound(branchId, DomainConstants.ERROR_PRODUCT_BRANCH_NOT_FOUND))
+                .doOnSuccess(p -> log.info(DomainConstants.LOG_PRODUCT_ADD_SUCCESS, p.getName(), branchId))
+                .doOnError(e -> log.error(DomainConstants.LOG_PRODUCT_ADD_ERROR, e.getMessage()));
     }
-   
-//    @Override
-//    public Flux<Branch> findByFranchiseId(Long franchiseId) {
-//        return branchRepository.findByFranchiseId(franchiseId)
-//                .doFirst(() -> log.info("Buscando sucursales para franquicia ID: {}", franchiseId))
-//                .switchIfEmpty(Flux.error(
-//                        new IllegalArgumentException("No existen sucursales para la franquicia con ID: " + franchiseId)
-//                ))
-//                .doOnComplete(() -> log.info("Consulta de sucursales finalizada para franquicia ID: {}", franchiseId))
-//                .doOnError(e -> log.error("Error consultando sucursales: {}", e.getMessage()));
-//    }
 }

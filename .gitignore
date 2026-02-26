@@ -46,3 +46,6 @@ Thumbs.db
 logs/
 *.tmp
 *.temp
+
+# Ignorar configuración sensible
+.env

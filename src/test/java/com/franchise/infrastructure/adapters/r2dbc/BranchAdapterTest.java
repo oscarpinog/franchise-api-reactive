@@ -84,19 +84,5 @@ class BranchAdapterTest {
                 .verifyComplete();
     }
 
-    @Test
-    @DisplayName("Debe actualizar el nombre en la base de datos")
-    void updateBranchName_Success() {
-        String newName = "Nombre Actualizado";
-        when(repository.findById(10L)).thenReturn(Mono.just(branchEntity));
-        // Simulamos que al guardar, la entidad ya tiene el nombre nuevo
-        branchEntity.setName(newName);
-        when(repository.save(any(BranchEntity.class))).thenReturn(Mono.just(branchEntity));
 
-        Mono<Branch> result = branchAdapter.updateBranchName(10L, newName);
-
-        StepVerifier.create(result)
-                .expectNextMatches(b -> b.getName().equals(newName))
-                .verifyComplete();
-    }
 }

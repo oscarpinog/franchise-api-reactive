@@ -7,14 +7,16 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # URL con tu endpoint real de AWS
-      - SPRING_R2DBC_URL=r2dbc:mysql://franchise-db.cnsiekmq8c9p.us-east-2.rds.amazonaws.com:3306/franchise_db
-      - SPRING_R2DBC_USERNAME=admin
-      - SPRING_R2DBC_PASSWORD=Gera123456+*
+      # Configuración de base de datos inyectada desde .env
+      - SPRING_R2DBC_URL=${DB_URL}
+      - SPRING_R2DBC_USERNAME=${DB_USERNAME}
+      - SPRING_R2DBC_PASSWORD=${DB_PASSWORD}
       
-      # Mantenlo en 'always' para que Docker cree las tablas si no existen
+      # Seguridad JWT (Debe coincidir con la de .env)
+      - JWT_SECRET=${JWT_SECRET}
+      
+      # Configuración operativa
       - SPRING_SQL_INIT_MODE=always
-      
-      # Logs para monitorear la conexión desde el contenedor
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_R2DBC=DEBUG
       - LOGGING_LEVEL_COM_FRANCHISE=DEBUG
+    restart: always

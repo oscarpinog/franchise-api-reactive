@@ -7,6 +7,8 @@ import com.franchise.domain.ports.in.FranchiseServicePort;
 import com.franchise.domain.ports.out.BranchOutputPort;
 import com.franchise.domain.ports.out.FranchiseOutputPort;
 import com.franchise.domain.ports.out.ProductOutputPort;
+import com.franchise.domain.util.DomainConstants;
+import com.franchise.domain.util.ValidationHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -32,48 +34,56 @@ public class FranchiseServiceImpl implements FranchiseServicePort {
 
     @Override
     public Mono<Franchise> create(Franchise franchise) {
+        ValidationHelper.requireNotNull(franchise, "franchise");
+
         return Mono.just(franchise)
-                .doFirst(() -> log.info("Registrando nueva franquicia: {}", franchise.getName()))
+                .doFirst(() -> log.info(DomainConstants.LOG_FRANCHISE_CREATE_START, franchise.getName()))
                 .flatMap(franchiseRepository::save)
-                .doOnSuccess(f -> log.info("Franquicia '{}' creada exitosamente con ID: {}", f.getName(), f.getId()));
+                .doOnSuccess(f -> log.info(DomainConstants.LOG_FRANCHISE_CREATE_SUCCESS, f.getName(), f.getId()));
     }
 
     @Override
     public Mono<Franchise> updateName(Long id, String name) {
+        ValidationHelper.requireNotNull(id, "id");
+        ValidationHelper.requireNotNull(name, "name");
+
         return franchiseRepository.findById(id)
-                .doFirst(() -> log.info("Intentando actualizar nombre de franquicia ID: {} a '{}'", id, name))
+                .doFirst(() -> log.info(DomainConstants.LOG_FRANCHISE_UPDATE_START, id, name))
                 .flatMap(f -> {
                     f.setName(name);
                     return franchiseRepository.save(f);
                 })
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("Error: Franquicia no encontrada con ID: " + id)))
-                .doOnSuccess(f -> log.info("Nombre de franquicia actualizado correctamente"));
+                .switchIfEmpty(ValidationHelper.onErrorNotFound(id, DomainConstants.ERROR_FRANCHISE_NOT_FOUND))
+                .doOnSuccess(f -> log.info(DomainConstants.LOG_FRANCHISE_UPDATE_SUCCESS));
     }
 
     @Override
     public Flux<Product> getTopProducts(Long franchiseId) {
+        ValidationHelper.requireNotNull(franchiseId, "franchiseId");
+
         return franchiseRepository.findById(franchiseId)
-                .doFirst(() -> log.info("Generando reporte de productos top para franquicia ID: {}", franchiseId))
-                // Si la franquicia no existe, cortamos el flujo con error
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("No existe la franquicia con ID: " + franchiseId)))
+                .doFirst(() -> log.info(DomainConstants.LOG_FRANCHISE_TOP_PRODUCTS_START, franchiseId))
+                .switchIfEmpty(ValidationHelper.onErrorNotFound(franchiseId, DomainConstants.ERROR_FRANCHISE_NOT_FOUND))
                 .thenMany(branchRepository.findByFranchiseId(franchiseId))
                 .flatMap(branch -> {
-                    log.debug("Buscando producto con mayor stock en sucursal: {}", branch.getName());
+                    log.debug(DomainConstants.LOG_FRANCHISE_TOP_PRODUCTS_DEBUG, branch.getName());
                     return productRepository.findTopByBranchIdOrderByStockDesc(branch.getId());
                 })
-                .doOnComplete(() -> log.info("Reporte de top productos para franquicia {} finalizado con éxito", franchiseId));
+                .doOnComplete(() -> log.info(DomainConstants.LOG_FRANCHISE_TOP_PRODUCTS_COMPLETE, franchiseId));
     }
 
     @Override
     public Mono<Branch> addBranch(Long franchiseId, Branch branch) {
+        ValidationHelper.requireNotNull(franchiseId, "franchiseId");
+        ValidationHelper.requireNotNull(branch, "branch");
+
         return franchiseRepository.findById(franchiseId)
-                .doFirst(() -> log.info("Validando franquicia ID: {} para agregar sucursal '{}'", franchiseId, branch.getName()))
-                // Aseguramos integridad: la franquicia debe existir
+                .doFirst(() -> log.info(DomainConstants.LOG_FRANCHISE_ADD_BRANCH_VALIDATING, franchiseId, branch.getName()))
                 .flatMap(f -> {
                     branch.setFranchiseId(franchiseId);
                     return branchRepository.save(branch);
                 })
-                .switchIfEmpty(Mono.error(new IllegalArgumentException("No se puede agregar sucursal. La franquicia " + franchiseId + " no existe.")))
-                .doOnSuccess(b -> log.info("Sucursal '{}' vinculada correctamente a la franquicia {}", b.getName(), franchiseId));
+                .switchIfEmpty(ValidationHelper.onErrorNotFound(franchiseId, DomainConstants.ERROR_FRANCHISE_ADD_BRANCH_NOT_FOUND))
+                .doOnSuccess(b -> log.info(DomainConstants.LOG_FRANCHISE_ADD_BRANCH_SUCCESS, b.getName(), franchiseId));
     }
 }

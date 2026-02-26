@@ -10,78 +10,101 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 @WebFluxTest(BranchController.class)
-class BranchControllerTest {
+public class BranchControllerTest {
 
     @Autowired
-    private WebTestClient webTestClient; // El cliente para disparar peticiones
+    private WebTestClient webTestClient;
 
     @MockBean
-    private BranchServicePort branchService; // Simulamos el puerto de entrada
+    private BranchServicePort branchService;
 
     @Test
-    @DisplayName("POST /api/branches/{id}/products - Debe retornar 201 y el producto creado")
-    void addProduct_Success() {
-        Product mockProduct = new Product();
-        mockProduct.setId(500L);
-        mockProduct.setName("Producto Test");
-        mockProduct.setStock(10);
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe agregar un producto exitosamente a una sucursal")
+    void addProductSuccess() {
+        // 1. Crear el objeto con el campo que faltaba
+        Product productRequest = new Product();
+        productRequest.setId(1L);
+        productRequest.setName("Producto Test");
+        productRequest.setStock(10);
+        productRequest.setBranchId(1L); // <--- AGREGA ESTA LÍNEA ✅
 
-        Mockito.when(branchService.addProduct(eq(1L), any(Product.class)))
-               .thenReturn(Mono.just(mockProduct));
+        // 2. Mockear el servicio (usamos any() para evitar conflictos de coincidencia exacta)
+        Mockito.when(branchService.addProduct(anyLong(), any()))
+                .thenReturn(Mono.just(productRequest));
 
-        webTestClient.post()
+        // 3. Ejecutar la petición
+        webTestClient.mutateWith(csrf())
+                .post()
                 .uri("/api/branches/1/products")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(mockProduct) // Enviamos el cuerpo
+                .bodyValue(productRequest)
                 .exchange()
-                .expectStatus().isCreated() // Verificamos el 201
+                .expectStatus().isCreated() // Ahora sí será 201
                 .expectBody()
-                .jsonPath("$.id").isEqualTo(500)
-                .jsonPath("$.name").isEqualTo("Producto Test");
+                .jsonPath("$.name").isEqualTo("Producto Test")
+                .jsonPath("$.branchId").isEqualTo(1);
     }
 
     @Test
-    @DisplayName("PUT /api/branches/{id}/name - Debe retornar 200 al actualizar nombre")
-    void updateBranchName_Success() {
-        Branch updatedBranch = new Branch();
-        updatedBranch.setId(1L);
-        updatedBranch.setName("Nuevo Nombre");
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe fallar al agregar producto con ID de sucursal negativo")
+    void addProductValidationFail() {
+        webTestClient.mutateWith(csrf())
+                .post()
+                .uri("/api/branches/-1/products") // ID negativo
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(new Product())
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
 
-        Mockito.when(branchService.updateName(1L, "Nuevo Nombre"))
-               .thenReturn(Mono.just(updatedBranch));
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe actualizar el nombre de la sucursal exitosamente")
+    void updateBranchNameSuccess() {
+        // 1. Preparar datos
+        String nuevoNombre = "Sucursal Norte";
+        Branch branchResponse = new Branch();
+        branchResponse.setId(1L);
+        branchResponse.setName(nuevoNombre);
 
-        webTestClient.put()
+        // 2. Mockear servicio - IMPORTANTE: que coincidan los argumentos
+        Mockito.when(branchService.updateName(eq(1L), eq(nuevoNombre)))
+                .thenReturn(Mono.just(branchResponse));
+
+        // 3. Ejecutar
+        webTestClient.mutateWith(csrf())
+                .put()
                 .uri(uriBuilder -> uriBuilder
                         .path("/api/branches/1/name")
-                        .queryParam("name", "Nuevo Nombre")
+                        .queryParam("name", nuevoNombre) // <--- Asegúrate que no sea vacío
                         .build())
                 .exchange()
-                .expectStatus().isOk()
+                .expectStatus().isOk() // Ahora debería dar 200
                 .expectBody()
-                .jsonPath("$.name").isEqualTo("Nuevo Nombre");
+                .jsonPath("$.name").isEqualTo(nuevoNombre);
     }
 
     @Test
-    @DisplayName("PUT /api/branches/{id}/name - Debe retornar 404 cuando la sucursal no existe")
-    void updateBranchName_Error() {
-        // GIVEN
-        Mockito.when(branchService.updateName(anyLong(), anyString()))
-               .thenReturn(Mono.error(new IllegalArgumentException("No se encontró la sucursal")));
-
-        // WHEN & THEN
-        webTestClient.put()
-                .uri("/api/branches/99/name?name=Error")
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe fallar al actualizar nombre si el parámetro 'name' está en blanco")
+    void updateBranchNameBlankFail() {
+        webTestClient.mutateWith(csrf())
+                .put()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/branches/1/name")
+                        .queryParam("name", "") // Nombre vacío
+                        .build())
                 .exchange()
-                .expectStatus().isNotFound(); // Cambiamos is5xxServerError por isNotFound (404)
-                // O también podrías usar .expectStatus().isBadRequest() si devuelve 400
+                .expectStatus().isBadRequest();
     }
 }

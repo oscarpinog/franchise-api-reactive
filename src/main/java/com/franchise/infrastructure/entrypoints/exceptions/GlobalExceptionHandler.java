@@ -7,6 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.support.WebExchangeBindException;
+
+import jakarta.validation.ConstraintViolationException;
 import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
@@ -91,5 +93,19 @@ public class GlobalExceptionHandler {
         response.put("message", "Fallo general en el sistema.");
         
         return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response));
+    }
+    
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolationException(ConstraintViolationException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", LocalDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Validación Fallida");
+        
+        // Extraemos el mensaje de la validación
+        String message = ex.getConstraintViolations().iterator().next().getMessage();
+        body.put("message", message);
+
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 }

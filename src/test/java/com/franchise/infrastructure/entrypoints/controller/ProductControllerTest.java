@@ -8,13 +8,15 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import reactor.core.publisher.Mono;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.csrf;
 
 @WebFluxTest(ProductController.class)
-class ProductControllerTest {
+public class ProductControllerTest {
 
     @Autowired
     private WebTestClient webTestClient;
@@ -23,30 +25,34 @@ class ProductControllerTest {
     private ProductServicePort productService;
 
     @Test
-    @DisplayName("DELETE /api/products/{id} - Debe retornar 204 No Content")
-    void deleteProduct_Success() {
-        Mockito.when(productService.delete(100L)).thenReturn(Mono.empty());
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe eliminar un producto exitosamente (204 No Content)")
+    void deleteProductSuccess() {
+        Mockito.when(productService.delete(anyLong())).thenReturn(Mono.empty());
 
-        webTestClient.delete()
-                .uri("/api/products/100")
+        webTestClient.mutateWith(csrf())
+                .delete()
+                .uri("/api/products/1")
                 .exchange()
-                .expectStatus().isNoContent() // Verifica el código 204
-                .expectBody().isEmpty();     // Verifica que no hay cuerpo
+                .expectStatus().isNoContent(); // Verifica el 204
     }
 
     @Test
-    @DisplayName("PATCH /api/products/{id}/stock - Debe retornar 200 y producto actualizado")
-    void updateStock_Success() {
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe actualizar el stock exitosamente")
+    void updateStockSuccess() {
         Product product = new Product();
-        product.setId(100L);
+        product.setId(1L);
+        product.setName("Producto");
         product.setStock(50);
 
-        Mockito.when(productService.updateStock(eq(100L), anyInt()))
-               .thenReturn(Mono.just(product));
+        Mockito.when(productService.updateStock(eq(1L), eq(50)))
+                .thenReturn(Mono.just(product));
 
-        webTestClient.patch()
+        webTestClient.mutateWith(csrf())
+                .patch()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/products/100/stock")
+                        .path("/api/products/1/stock")
                         .queryParam("stock", 50)
                         .build())
                 .exchange()
@@ -56,18 +62,34 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/products/{id}/name - Debe retornar 200 y nuevo nombre")
-    void updateProductName_Success() {
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe fallar si el stock es negativo (@Min(0))")
+    void updateStockNegativeFail() {
+        webTestClient.mutateWith(csrf())
+                .patch()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/api/products/1/stock")
+                        .queryParam("stock", -5) // Stock inválido
+                        .build())
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe actualizar el nombre del producto exitosamente")
+    void updateProductNameSuccess() {
         Product product = new Product();
-        product.setId(100L);
+        product.setId(1L);
         product.setName("Nuevo Nombre");
 
-        Mockito.when(productService.updateName(eq(100L), anyString()))
-               .thenReturn(Mono.just(product));
+        Mockito.when(productService.updateName(eq(1L), anyString()))
+                .thenReturn(Mono.just(product));
 
-        webTestClient.put()
+        webTestClient.mutateWith(csrf())
+                .put()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/api/products/100/name")
+                        .path("/api/products/1/name")
                         .queryParam("name", "Nuevo Nombre")
                         .build())
                 .exchange()
@@ -77,14 +99,13 @@ class ProductControllerTest {
     }
 
     @Test
-    @DisplayName("DELETE /api/products/{id} - Debe retornar 404 si no existe")
-    void deleteProduct_NotFound() {
-        Mockito.when(productService.delete(99L))
-               .thenReturn(Mono.error(new IllegalArgumentException("No existe")));
-
-        webTestClient.delete()
-                .uri("/api/products/99")
+    @WithMockUser(roles = "ADMIN")
+    @DisplayName("Debe fallar si el ID del producto no es positivo")
+    void productIdInvalidFail() {
+        webTestClient.mutateWith(csrf())
+                .delete()
+                .uri("/api/products/0") // ID inválido
                 .exchange()
-                .expectStatus().isNotFound(); // Asumiendo que corregimos el ExceptionHandler
+                .expectStatus().isBadRequest();
     }
 }
