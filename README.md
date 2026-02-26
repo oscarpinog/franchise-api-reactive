@@ -23,6 +23,7 @@ El proyecto está configurado para conectarse automáticamente a la base de dato
 ### Acceso en la Nube (AWS)
 La solución está desplegada y operativa en la nube:
 * Swagger UI: `https://iz5f632zbj.us-east-2.awsapprunner.com/webjars/swagger-ui/index.html`
+	Server: `Produccion`
 
 ---
 

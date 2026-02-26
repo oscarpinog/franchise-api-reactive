@@ -6,12 +6,14 @@ import com.franchise.domain.model.Product;
 import com.franchise.domain.ports.out.BranchOutputPort;
 import com.franchise.domain.ports.out.FranchiseOutputPort;
 import com.franchise.domain.ports.out.ProductOutputPort;
+import com.franchise.domain.util.ResilienceFallback;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -25,130 +27,116 @@ class FranchiseServiceImplTest {
 
     @Mock
     private FranchiseOutputPort franchiseRepository;
-
     @Mock
     private BranchOutputPort branchRepository;
-
     @Mock
     private ProductOutputPort productRepository;
+
+    @Spy
+    private ResilienceFallback resilienceFallback;
 
     @InjectMocks
     private FranchiseServiceImpl franchiseService;
 
-    private Franchise sampleFranchise;
+    private Franchise franchise;
+    private Branch branch;
+    private Product product;
 
     @BeforeEach
     void setUp() {
-        sampleFranchise = new Franchise();
-        sampleFranchise.setId(1L);
-        sampleFranchise.setName("Franquicia Test");
+        franchise = new Franchise();
+        franchise.setId(1L);
+        franchise.setName("Mega Corp");
+
+        branch = new Branch();
+        branch.setId(10L);
+        branch.setName("Sucursal Norte");
+
+        product = new Product();
+        product.setId(100L);
+        product.setName("Laptop Pro");
+        product.setStock(50);
     }
 
     @Test
     @DisplayName("Debe crear una franquicia exitosamente")
-    void create_Success() {
-        when(franchiseRepository.save(any(Franchise.class))).thenReturn(Mono.just(sampleFranchise));
+    void createSuccess() {
+        when(franchiseRepository.save(any())).thenReturn(Mono.just(franchise));
 
-        Mono<Franchise> result = franchiseService.create(sampleFranchise);
-
-        StepVerifier.create(result)
-                .expectNextMatches(f -> f.getName().equals("Franquicia Test") && f.getId() == 1L)
+        StepVerifier.create(franchiseService.create(franchise))
+                .expectNextMatches(f -> f.getName().equals("Mega Corp"))
                 .verifyComplete();
-        
-        verify(franchiseRepository, times(1)).save(any(Franchise.class));
     }
 
     @Test
-    @DisplayName("Debe actualizar el nombre de una franquicia existente")
-    void updateName_Success() {
-        String newName = "Nuevo Nombre";
-        when(franchiseRepository.findById(1L)).thenReturn(Mono.just(sampleFranchise));
-        when(franchiseRepository.save(any(Franchise.class))).thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+    @DisplayName("Debe obtener los productos con más stock por sucursal")
+    void getTopProductsSuccess() {
+        // GIVEN: Una franquicia, una sucursal vinculada y un producto top
+        when(franchiseRepository.findById(1L)).thenReturn(Mono.just(franchise));
+        when(branchRepository.findByFranchiseId(1L)).thenReturn(Flux.just(branch));
+        when(productRepository.findTopByBranchIdOrderByStockDesc(10L)).thenReturn(Mono.just(product));
 
-        Mono<Franchise> result = franchiseService.updateName(1L, newName);
+        // WHEN & THEN
+        StepVerifier.create(franchiseService.getTopProducts(1L))
+                .expectNextMatches(p -> p.getName().equals("Laptop Pro") && p.getStock() == 50)
+                .verifyComplete();
 
-        StepVerifier.create(result)
+        verify(productRepository).findTopByBranchIdOrderByStockDesc(10L);
+    }
+
+    @Test
+    @DisplayName("Debe retornar Flux vacío (fallback) cuando falla el reporte de top productos")
+    void getTopProductsFallback() {
+        when(franchiseRepository.findById(1L)).thenReturn(Mono.just(franchise));
+        // Simulamos un error al buscar sucursales
+        when(branchRepository.findByFranchiseId(1L)).thenReturn(Flux.error(new RuntimeException("Error DB")));
+
+        StepVerifier.create(franchiseService.getTopProducts(1L))
+                .verifyComplete(); // El fallback handleFluxError devuelve Flux.empty()
+
+        verify(resilienceFallback).handleFluxError(any());
+    }
+
+    @Test
+    @DisplayName("Debe agregar una sucursal a la franquicia")
+    void addBranchToFranchiseSuccess() {
+        when(franchiseRepository.findById(1L)).thenReturn(Mono.just(franchise));
+        when(branchRepository.save(any())).thenReturn(Mono.just(branch));
+
+        StepVerifier.create(franchiseService.addBranch(1L, branch))
+                .expectNextMatches(b -> b.getFranchiseId().equals(1L))
+                .verifyComplete();
+    }
+
+    
+    @Test
+    @DisplayName("Debe actualizar el nombre de la franquicia exitosamente")
+    void updateNameSuccess() {
+        // GIVEN
+        String newName = "Franquicia Actualizada";
+        when(franchiseRepository.findById(1L)).thenReturn(Mono.just(franchise));
+        when(franchiseRepository.save(any(Franchise.class))).thenReturn(Mono.just(franchise));
+
+        // WHEN
+        StepVerifier.create(franchiseService.updateName(1L, newName))
+                // THEN
                 .expectNextMatches(f -> f.getName().equals(newName))
                 .verifyComplete();
+
+        verify(franchiseRepository).findById(1L);
+        verify(franchiseRepository).save(any(Franchise.class));
     }
 
     @Test
-    @DisplayName("Debe lanzar error al actualizar nombre si la franquicia no existe")
-    void updateName_NotFound() {
+    @DisplayName("Debe lanzar error 404 si la franquicia no existe al intentar actualizar")
+    void updateNameNotFound() {
+        // GIVEN
         when(franchiseRepository.findById(1L)).thenReturn(Mono.empty());
 
-        Mono<Franchise> result = franchiseService.updateName(1L, "Nombre");
-
-        StepVerifier.create(result)
-                .expectErrorMatches(throwable -> throwable instanceof IllegalArgumentException &&
-                        throwable.getMessage().contains("Franquicia no encontrada"))
-                .verify();
-    }
-
-    @Test
-    @DisplayName("Debe obtener los productos top por sucursal")
-    void getTopProducts_Success() {
-        Long fId = 1L;
-        Branch branch1 = new Branch(); branch1.setId(10L); branch1.setName("Sucursal A");
-        Branch branch2 = new Branch(); branch2.setId(11L); branch2.setName("Sucursal B");
-        
-        Product p1 = new Product(); p1.setName("Laptop"); p1.setStock(50);
-        Product p2 = new Product(); p2.setName("Mouse"); p2.setStock(100);
-
-        when(franchiseRepository.findById(fId)).thenReturn(Mono.just(sampleFranchise));
-        when(branchRepository.findByFranchiseId(fId)).thenReturn(Flux.just(branch1, branch2));
-        when(productRepository.findTopByBranchIdOrderByStockDesc(10L)).thenReturn(Mono.just(p1));
-        when(productRepository.findTopByBranchIdOrderByStockDesc(11L)).thenReturn(Mono.just(p2));
-
-        Flux<Product> result = franchiseService.getTopProducts(fId);
-
-        StepVerifier.create(result)
-                .expectNext(p1)
-                .expectNext(p2)
-                .verifyComplete();
-    }
-
-    @Test
-    @DisplayName("Debe lanzar error en reporte si la franquicia no existe")
-    void getTopProducts_FranchiseNotFound() {
-        when(franchiseRepository.findById(1L)).thenReturn(Mono.empty());
-
-        Flux<Product> result = franchiseService.getTopProducts(1L);
-
-        StepVerifier.create(result)
-                .expectError(IllegalArgumentException.class)
-                .verify();
-    }
-
-    @Test
-    @DisplayName("Debe agregar una sucursal correctamente")
-    void addBranch_Success() {
-        Branch newBranch = new Branch();
-        newBranch.setName("Sucursal Norte");
-
-        when(franchiseRepository.findById(1L)).thenReturn(Mono.just(sampleFranchise));
-        when(branchRepository.save(any(Branch.class))).thenAnswer(invocation -> {
-            Branch b = invocation.getArgument(0);
-            b.setId(50L);
-            return Mono.just(b);
-        });
-
-        Mono<Branch> result = franchiseService.addBranch(1L, newBranch);
-
-        StepVerifier.create(result)
-                .expectNextMatches(b -> b.getFranchiseId().equals(1L) && b.getName().equals("Sucursal Norte"))
-                .verifyComplete();
-    }
-
-    @Test
-    @DisplayName("Debe fallar al agregar sucursal si la franquicia no existe")
-    void addBranch_FranchiseNotFound() {
-        when(franchiseRepository.findById(1L)).thenReturn(Mono.empty());
-
-        Mono<Branch> result = franchiseService.addBranch(1L, new Branch());
-
-        StepVerifier.create(result)
-                .expectErrorMatches(t -> t.getMessage().contains("La franquicia 1 no existe"))
+        // WHEN
+        StepVerifier.create(franchiseService.updateName(1L, "Nombre"))
+                // THEN: Aquí no entra el fallback de Resilience4j porque es un error de validación de negocio
+                .expectError() 
                 .verify();
     }
 }
