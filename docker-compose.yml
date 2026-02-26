@@ -14,6 +14,7 @@ services:
       
       # Seguridad JWT (Debe coincidir con la de .env)
       - JWT_SECRET=${JWT_SECRET}
+      - APP_AWS_URL=${APP_AWS_URL}
       
       # Configuración operativa
       - SPRING_SQL_INIT_MODE=always

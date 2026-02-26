@@ -31,6 +31,9 @@ services:
       - SPRING_R2DBC_USERNAME=root
       - SPRING_R2DBC_PASSWORD=root
       - SPRING_SQL_INIT_MODE=always
+	  
+	  - JWT_SECRET=llave_secreta_para_aplicacion_ejemplo_local
+      - APP_AWS_URL=http://localhost:4200
 
 volumes:
   mysql_data:

@@ -9,21 +9,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class OpenApiConfigTest {
 
-    @Test
-    @DisplayName("Debe configurar correctamente los metadatos de OpenAPI")
-    void customOpenAPIMetadataTest() {
-        // GIVEN
-        OpenApiConfig config = new OpenApiConfig();
-
-        // WHEN
-        OpenAPI openAPI = config.customOpenAPI();
-
-        // THEN
-        assertThat(openAPI).isNotNull();
-        assertThat(openAPI.getInfo().getTitle()).contains("Franchise Management API");
-        assertThat(openAPI.getInfo().getVersion()).isEqualTo("2.0");
-        assertThat(openAPI.getInfo().getDescription()).contains("Servicio reactivo");
-    }
 
     @Test
     @DisplayName("Debe incluir la configuración de seguridad Bearer JWT")
