@@ -11,10 +11,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      # Se añaden credenciales al ping para un chequeo real
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 20s # Tiempo de gracia para la creación inicial de la BD
 
   app:
     build: 
@@ -31,8 +33,7 @@ services:
       - SPRING_R2DBC_USERNAME=root
       - SPRING_R2DBC_PASSWORD=root
       - SPRING_SQL_INIT_MODE=always
-	  
-	  - JWT_SECRET=llave_secreta_para_aplicacion_ejemplo_local
+      - JWT_SECRET=llave_secreta_para_aplicacion_ejemplo_local
       - APP_AWS_URL=http://localhost:4200
 
 volumes:
